@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办事项清单 | Todo List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        danger: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .todo-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .subtask-container {
+            border-left: 2px solid #e5e7eb;
+            margin-left: 10px;
+            padding-left: 16px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-gray-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- 头部 -->
+        <div class="flex justify-between items-center mb-4">
+            <!-- 左上角全局重置按钮 -->
+            <button id="reset-all-btn" class="px-4 py-2 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
+                <i class="fa fa-refresh mr-1"></i> 全局重置
+            </button>
+            
+            <!-- 右上角数据导入导出 -->
+            <div class="flex gap-2">
+                <button id="export-data-btn" class="px-4 py-2 text-sm bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
+                    <i class="fa fa-download mr-1"></i> 导出数据
+                </button>
+                <label for="import-data-input" class="px-4 py-2 text-sm bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors cursor-pointer">
+                    <i class="fa fa-upload mr-1"></i> 导入数据
+                </label>
+                <input id="import-data-input" type="file" accept=".todo" class="hidden">
+            </div>
+        </div>
+        
+        <header class="text-center mb-10">
+            <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-primary mb-2">
+                <i class="fa fa-check-square-o mr-2"></i>待办事项清单
+            </h1>
+            <p class="text-gray-600 text-lg">记录你的每一天，完成你的每一个目标</p>
+        </header>
+
+        <!-- 主要内容 -->
+        <main class="bg-white rounded-2xl p-6 todo-shadow max-w-full">
+            <!-- 添加任务表单 -->
+            <!-- 积分显示 -->
+            <div class="flex justify-between items-center mb-4">
+                <span id="task-count" class="text-sm text-gray-500">任务总数: <span class="font-medium text-primary">0</span></span>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-star text-yellow-400"></i>
+                        <span class="text-sm font-medium">总积分: <span id="user-points" class="font-bold text-yellow-600">0</span></span>
+                        <button id="clear-points-btn" class="text-xs text-gray-500 hover:text-red-500 transition-colors">
+                            <i class="fa fa-trash-o"></i> 清空
+                        </button>
+                    </div>
+                    <button id="rewards-btn" class="px-3 py-1 text-sm bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">
+                        奖励兑换
+                    </button>
+                </div>
+            </div>
+
+            <!-- 添加任务表单 -->
+            <form id="task-form" class="flex flex-col sm:flex-row gap-3 mb-8">
+                <div class="flex-1 space-y-2">
+                    <input 
+                        type="text" 
+                        id="task-input" 
+                        placeholder="输入新的待办事项..." 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none"
+                        required
+                    >
+                    <div class="flex items-center gap-3">
+                        <label for="task-points" class="text-sm text-gray-600">完成积分:</label>
+                        <input 
+                            type="number" 
+                            id="task-points" 
+                            min="1" 
+                            max="100" 
+                            value="10" 
+                            class="w-24 px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none text-sm"
+                        >
+                    </div>
+                </div>
+                <button 
+                    type="submit" 
+                    class="bg-primary hover:bg-primary/90 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                    <i class="fa fa-plus"></i>
+                    <span>添加任务</span>
+                </button>
+            </form>
+
+            <!-- 任务过滤 -->
+            <div class="flex flex-wrap gap-2 mb-6 justify-between items-center">
+                <div class="flex gap-2">
+                    <button class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-primary text-white" data-filter="all">
+                        全部
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700" data-filter="active">
+                        未完成
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700" data-filter="completed">
+                        已完成
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 任务列表卡片 -->
+                <div class="bg-white rounded-xl shadow-md border border-gray-100 p-6 transition-shadow hover:shadow-lg lg:col-span-2">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fa fa-tasks mr-2 text-primary"></i>待办任务
+                    </h2>
+                    <div id="task-list" class="space-y-3 min-h-[200px]">
+                        <div id="empty-state" class="text-center py-16">
+                            <div class="inline-block p-5 rounded-full bg-gray-50 mb-4">
+                                <i class="fa fa-tasks text-4xl text-gray-300"></i>
+                            </div>
+                            <h3 class="text-xl font-medium text-gray-600 mb-2">暂无任务</h3>
+                            <p class="text-gray-500">添加你的第一个任务开始使用</p>
+                        </div>
+                    </div>
+
+                    <!-- 清空按钮 -->
+                    <div class="mt-6 text-center">
+                        <button id="clear-btn" class="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                            清空已完成任务
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 已兑换奖励列表卡片 -->
+                <div class="bg-white rounded-xl shadow-md border border-gray-100 p-6 transition-shadow hover:shadow-lg">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fa fa-gift mr-2 text-yellow-500"></i>已兑换奖励
+                    </h2>
+                    <div id="redeemed-rewards-list" class="space-y-3 min-h-[200px]">
+                        <div id="empty-rewards-state" class="text-center py-16">
+                            <div class="inline-block p-5 rounded-full bg-gray-50 mb-4">
+                                <i class="fa fa-gift text-4xl text-gray-300"></i>
+                            </div>
+                            <h3 class="text-xl font-medium text-gray-600 mb-2">暂无已兑换奖励</h3>
+                            <p class="text-gray-500">完成任务获得积分，兑换你喜欢的奖励</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 清空已使用奖励按钮 -->
+                    <div class="mt-6 text-center">
+                        <button id="clear-used-rewards-btn" class="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                            清空已使用奖励
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GitHub风格贡献日历 -->
+            <div class="mt-8 bg-white rounded-xl shadow-md border border-gray-100 p-6 transition-shadow hover:shadow-lg">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fa fa-calendar-check-o mr-2 text-primary"></i>任务足迹日历
+                </h2>
+                <div id="contribution-calendar" class="w-full">
+                    <div class="flex justify-between items-center mb-4">
+                        <div id="calendar-title" class="text-sm font-medium text-gray-700">任务记录</div>
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-1 text-xs text-gray-500">
+                                <div class="w-3 h-3 bg-gray-100 border border-gray-200"></div>
+                                <span>0</span>
+                                <div class="w-3 h-3 bg-green-100"></div>
+                                <span>1-3</span>
+                                <div class="w-3 h-3 bg-green-300"></div>
+                                <span>4-6</span>
+                                <div class="w-3 h-3 bg-green-500"></div>
+                                <span>7+</span>
+                            </div>
+                            <select id="year-selector" class="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                <!-- 年份选项将动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex">
+                        <!-- 星期标签 -->
+                        <div class="flex flex-col gap-[3px] mr-2">
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">日</div>
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">一</div>
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">二</div>
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">三</div>
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">四</div>
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">五</div>
+                            <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">六</div>
+                        </div>
+                        <!-- 日历网格 - 改为纵向排列，每列代表一周 -->
+                        <div id="calendar-grid" class="grid grid-cols-[repeat(53,minmax(12px,1fr))] gap-[3px] h-[calc(7*(0.75rem+3px))]">
+                            <!-- 日历网格将动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="mt-10 text-center text-gray-500 text-sm pb-10">
+            <p>&copy; 待办事项清单 TodoList | <a href="https://github.com/OliveEns" class="text-gray-600 hover:text-gray-900 flex items-center gap-1 inline-flex" target="_blank" rel="noopener noreferrer"><i class="fa fa-github"></i> OliveEns</a></p>
+        </footer>
+    </div>
+
+    <!-- 全局重置确认弹窗 -->
+    <div id="reset-confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 mx-4">
+            <div class="text-center mb-4">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
+                    <i class="fa fa-exclamation-triangle text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">确认重置所有数据？</h3>
+                <p class="text-gray-600">此操作将清空所有任务、已兑换奖励和自定义奖励，且无法恢复！</p>
+            </div>
+            <div class="flex gap-4 justify-center">
+                <button id="reset-cancel-btn" class="px-5 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors">
+                    取消
+                </button>
+                <button id="reset-confirm-btn" class="px-5 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors">
+                    确认重置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加子任务模态框 -->
+    <div id="add-subtask-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">添加子任务</h3>
+            <div class="space-y-4">
+                <input 
+                    type="text" 
+                    id="subtask-input" 
+                    placeholder="输入子任务内容..." 
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none"
+                    required
+                >
+                <div class="flex items-center gap-3">
+                    <label for="subtask-points" class="text-sm text-gray-600">完成积分:</label>
+                    <input 
+                        type="number" 
+                        id="subtask-points" 
+                        min="1" 
+                        max="50" 
+                        value="5" 
+                        class="w-24 px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none text-sm"
+                    >
+                </div>
+            </div>
+            <input type="hidden" id="parent-task-id">
+            <div class="flex justify-end gap-2 mt-4">
+                <button id="cancel-subtask" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    取消
+                </button>
+                <button id="confirm-subtask" class="px-4 py-2 text-white bg-primary rounded-lg hover:bg-primary/90">
+                    添加
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 奖励兑换模态框 -->
+    <div id="rewards-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">奖励兑换</h3>
+                <span class="text-sm font-medium">当前积分: <span id="rewards-points" class="font-bold text-yellow-600">0</span></span>
+            </div>
+            
+            <div id="rewards-list" class="space-y-3 mb-4">
+                <!-- 奖励项将动态生成 -->
+            </div>
+            
+            <div class="mt-4">
+                <h4 class="text-sm font-medium mb-2">添加自定义奖励</h4>
+                <div class="flex gap-2 mb-3">
+                    <input 
+                        type="text" 
+                        id="custom-reward-name" 
+                        placeholder="奖励名称..." 
+                        class="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none text-sm"
+                    >
+                    <input 
+                        type="number" 
+                        id="custom-reward-cost" 
+                        min="1" 
+                        placeholder="所需积分" 
+                        class="w-24 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none text-sm"
+                    >
+                </div>
+                <div id="reward-error-message" class="text-red-500 text-xs mb-2 hidden">请输入有效的奖励名称和所需积分</div>
+                <button id="add-reward-btn" class="w-full px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors">
+                    添加奖励
+                </button>
+            </div>
+            
+            <div class="flex justify-end mt-6">
+                <button id="close-rewards" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 积分清空确认弹窗 -->
+    <div id="clear-points-confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 mx-4">
+            <div class="text-center mb-4">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
+                    <i class="fa fa-exclamation-triangle text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">确认清空所有积分？</h3>
+                <p class="text-gray-600">此操作将清空所有积分，且无法恢复！</p>
+            </div>
+            <div class="flex gap-4 justify-center">
+                <button id="clear-points-cancel-btn" class="px-5 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors">
+                    取消
+                </button>
+                <button id="clear-points-confirm-btn" class="px-5 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors">
+                    确认清空
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成功提示模态框 -->
+    <div id="success-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-4">
+                <i class="fa fa-check text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">操作成功！</h3>
+            <p id="success-message" class="text-gray-600 mb-4">恭喜你成功兑换了奖励</p>
+            <button id="close-success" class="px-4 py-2 text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                确定
+            </button>
+        </div>
+    </div>
+    
+    <!-- 错误提示模态框 -->
+    <div id="error-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
+                <i class="fa fa-exclamation-triangle text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">操作失败</h3>
+            <p id="error-message" class="text-gray-600 mb-4">请检查您的操作</p>
+            <button id="close-error" class="px-4 py-2 text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                确定
+            </button>
+        </div>
+    </div>
+    
+    <!-- 确认模态框 -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-500 mb-4">
+                <i class="fa fa-question-circle text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">请确认</h3>
+            <p id="confirm-message" class="text-gray-600 mb-4">确定要执行此操作吗？</p>
+            <div class="flex gap-4 justify-center">
+                <button id="confirm-cancel" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    取消
+                </button>
+                <button id="confirm-accept" class="px-4 py-2 text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                    确定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 待办事项应用 - 支持多级任务和积分系统
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM 元素
+            const taskForm = document.getElementById('task-form');
+            const taskInput = document.getElementById('task-input');
+            const taskPoints = document.getElementById('task-points');
+            const taskList = document.getElementById('task-list');
+            const emptyState = document.getElementById('empty-state');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const taskCountElement = document.querySelector('#task-count span');
+            const userPointsElement = document.getElementById('user-points');
+            
+            // 子任务模态框相关
+            const subtaskModal = document.getElementById('add-subtask-modal');
+            const subtaskInput = document.getElementById('subtask-input');
+            const subtaskPoints = document.getElementById('subtask-points');
+            const parentTaskIdInput = document.getElementById('parent-task-id');
+            const cancelSubtaskBtn = document.getElementById('cancel-subtask');
+            const confirmSubtaskBtn = document.getElementById('confirm-subtask');
+            
+            // 奖励系统相关
+            const rewardsBtn = document.getElementById('rewards-btn');
+            const rewardsModal = document.getElementById('rewards-modal');
+            const rewardsPointsElement = document.getElementById('rewards-points');
+            const rewardsList = document.getElementById('rewards-list');
+            const customRewardName = document.getElementById('custom-reward-name');
+            const customRewardCost = document.getElementById('custom-reward-cost');
+            const addRewardBtn = document.getElementById('add-reward-btn');
+            const closeRewardsBtn = document.getElementById('close-rewards');
+            
+            // 成功提示模态框
+            const successModal = document.getElementById('success-modal');
+            const successMessage = document.getElementById('success-message');
+            const closeSuccessBtn = document.getElementById('close-success');
+            
+            // 错误提示模态框
+            const errorModal = document.getElementById('error-modal');
+            const errorMessage = document.getElementById('error-message');
+            const closeErrorBtn = document.getElementById('close-error');
+            
+            // 确认模态框
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmMessage = document.getElementById('confirm-message');
+            const confirmCancelBtn = document.getElementById('confirm-cancel');
+            const confirmAcceptBtn = document.getElementById('confirm-accept');
+            let confirmCallback = null;
+            
+            // 积分清空确认弹窗
+            const clearPointsBtn = document.getElementById('clear-points-btn');
+            const clearPointsConfirmModal = document.getElementById('clear-points-confirm-modal');
+            const clearPointsCancelBtn = document.getElementById('clear-points-cancel-btn');
+            const clearPointsConfirmBtn = document.getElementById('clear-points-confirm-btn');
+            
+            // 状态
+            let tasks = JSON.parse(localStorage.getItem('todoTasks')) || [];
+            let currentFilter = 'all';
+            let userPoints = parseInt(localStorage.getItem('todoUserPoints')) || 0;
+            let rewards = JSON.parse(localStorage.getItem('todoRewards')) || [];
+            let redeemedRewards = JSON.parse(localStorage.getItem('todoRedeemedRewards')) || [];
+            let contributionData = JSON.parse(localStorage.getItem('todoContributionData')) || {};
+            
+            // 已兑换奖励列表元素
+            const redeemedRewardsList = document.getElementById('redeemed-rewards-list');
+            const emptyRewardsState = document.getElementById('empty-rewards-state');
+            
+            // 初始化
+            function init() {
+                renderTasks();
+                updateTaskCount();
+                updateUserPoints();
+                updateClearButtonState();
+                setupEventListeners();
+                renderRewards();
+                renderRedeemedRewards();
+                updateClearUsedRewardsButtonState(); // 初始化清空已使用奖励按钮状态
+            }
+            
+            // 设置事件监听器
+            function setupEventListeners() {
+                // 添加任务
+                taskForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    addTask();
+                });
+                
+                // 监听奖励输入框，当用户开始输入时清除错误状态
+                customRewardName.addEventListener('input', function() {
+                    const errorMessage = document.getElementById('reward-error-message');
+                    errorMessage.classList.add('hidden');
+                    this.classList.remove('border-red-500');
+                });
+                
+                customRewardCost.addEventListener('input', function() {
+                    const errorMessage = document.getElementById('reward-error-message');
+                    errorMessage.classList.add('hidden');
+                    this.classList.remove('border-red-500');
+                });
+                
+                // 过滤任务
+                filterButtons.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        filterButtons.forEach(b => {
+                            b.classList.remove('bg-primary', 'text-white');
+                            b.classList.add('bg-gray-200', 'text-gray-700');
+                        });
+                        this.classList.remove('bg-gray-200', 'text-gray-700');
+                        this.classList.add('bg-primary', 'text-white');
+                        currentFilter = this.dataset.filter;
+                        renderTasks();
+                    });
+                });
+                
+                // 清空已完成任务
+                clearBtn.addEventListener('click', clearCompletedTasks);
+                
+                // 子任务模态框
+                cancelSubtaskBtn.addEventListener('click', closeSubtaskModal);
+                confirmSubtaskBtn.addEventListener('click', addSubtask);
+                subtaskInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSubtask();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeSubtaskModal();
+                    }
+                });
+                
+                // 奖励系统
+                rewardsBtn.addEventListener('click', openRewardsModal);
+                closeRewardsBtn.addEventListener('click', closeRewardsModal);
+                addRewardBtn.addEventListener('click', addCustomReward);
+                
+                // 成功提示模态框
+                closeSuccessBtn.addEventListener('click', closeSuccessModal);
+                
+                // 错误提示模态框事件监听器
+                closeErrorBtn.addEventListener('click', function() {
+                    errorModal.classList.add('hidden');
+                    errorModal.classList.remove('opacity-100');
+                });
+                
+                // 确认模态框事件监听器
+                confirmCancelBtn.addEventListener('click', function() {
+                    confirmModal.classList.add('hidden');
+                    confirmModal.classList.remove('opacity-100');
+                    document.body.style.overflow = '';
+                    confirmCallback = null;
+                });
+                
+                confirmAcceptBtn.addEventListener('click', function() {
+                    confirmModal.classList.add('hidden');
+                    confirmModal.classList.remove('opacity-100');
+                    document.body.style.overflow = '';
+                    if (typeof confirmCallback === 'function') {
+                        confirmCallback(true);
+                    }
+                    confirmCallback = null;
+                });
+                
+                // 点击模态框背景关闭
+                errorModal.addEventListener('click', function(e) {
+                    if (e.target === errorModal) {
+                        errorModal.classList.add('hidden');
+                        errorModal.classList.remove('opacity-100');
+                    }
+                });
+                
+                confirmModal.addEventListener('click', function(e) {
+                    if (e.target === confirmModal) {
+                        confirmModal.classList.add('hidden');
+                        confirmModal.classList.remove('opacity-100');
+                        document.body.style.overflow = '';
+                        confirmCallback = null;
+                    }
+                });
+                
+                // 已兑换奖励状态切换
+                redeemedRewardsList.addEventListener('click', function(e) {
+                    if (e.target.closest('.task-checkbox')) {
+                        const rewardId = parseInt(e.target.closest('[data-id]').dataset.id);
+                        toggleRewardUsedStatus(rewardId);
+                    }
+                });
+                
+                // 清空已使用奖励
+                const clearUsedRewardsBtn = document.getElementById('clear-used-rewards-btn');
+                clearUsedRewardsBtn.addEventListener('click', clearUsedRewards);
+                
+                // 全局重置按钮和弹窗
+                const resetAllBtn = document.getElementById('reset-all-btn');
+                const resetConfirmModal = document.getElementById('reset-confirm-modal');
+                const resetCancelBtn = document.getElementById('reset-cancel-btn');
+                const resetConfirmBtn = document.getElementById('reset-confirm-btn');
+                
+                // 积分清空按钮事件
+                clearPointsBtn.addEventListener('click', function() {
+                    // 只有当积分大于0时才显示确认弹窗
+                    if (userPoints > 0) {
+                        clearPointsConfirmModal.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden'; // 禁止背景滚动
+                    }
+                });
+                
+                clearPointsCancelBtn.addEventListener('click', function() {
+                    clearPointsConfirmModal.classList.add('hidden');
+                    document.body.style.overflow = ''; // 恢复背景滚动
+                });
+                
+                clearPointsConfirmBtn.addEventListener('click', clearAllPoints);
+                
+                // 点击积分清空模态框背景关闭
+                clearPointsConfirmModal.addEventListener('click', function(e) {
+                    if (e.target === clearPointsConfirmModal) {
+                        clearPointsConfirmModal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                    }
+                });
+                
+                // 数据导入导出相关
+                const exportDataBtn = document.getElementById('export-data-btn');
+                const importDataInput = document.getElementById('import-data-input');
+                
+                resetAllBtn.addEventListener('click', function() {
+                    resetConfirmModal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden'; // 禁止背景滚动
+                });
+                
+                resetCancelBtn.addEventListener('click', function() {
+                    resetConfirmModal.classList.add('hidden');
+                    document.body.style.overflow = ''; // 恢复背景滚动
+                });
+                
+                resetConfirmBtn.addEventListener('click', resetAllData);
+                
+                // 点击模态框背景关闭
+                resetConfirmModal.addEventListener('click', function(e) {
+                    if (e.target === resetConfirmModal) {
+                        resetConfirmModal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                    }
+                });
+                
+                // 数据导出
+                exportDataBtn.addEventListener('click', exportData);
+                
+                // 数据导入
+                importDataInput.addEventListener('change', handleDataImport);
+                
+                // 全局重置数据函数
+                function resetAllData() {
+                    // 清空所有数据
+                    tasks = [];
+                    redeemedRewards = [];
+                    rewards = [];
+                    userPoints = 0;
+                    contributionData = {};
+                    
+                    // 保存到localStorage
+                    saveTasks();
+                    saveRedeemedRewards();
+                    saveRewards();
+                    saveUserPoints();
+                    localStorage.setItem('todoContributionData', JSON.stringify(contributionData));
+                    
+                    // 更新UI
+                    renderTasks();
+                    renderRedeemedRewards();
+                    renderRewards();
+                    updateUserPoints();
+                    updateTaskCount();
+                    updateClearButtonState();
+                    renderContributionCalendar(); // 重置贡献日历
+                    
+                    // 关闭弹窗
+                    resetConfirmModal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    
+                    // 显示成功消息
+                    successMessage.textContent = '所有数据已重置为初始状态！';
+                    successModal.classList.remove('hidden');
+                    successModal.classList.add('opacity-100');
+                }
+                
+                // 导出数据
+            function exportData() {
+                // 收集所有数据
+                const allData = {
+                    tasks: tasks,
+                    userPoints: userPoints,
+                    rewards: rewards,
+                    redeemedRewards: redeemedRewards,
+                    contributionData: contributionData, // 添加贡献数据
+                    exportDate: new Date().toISOString(),
+                    version: '1.0'
+                };
+                
+                // 创建JSON字符串
+                const jsonStr = JSON.stringify(allData, null, 2);
+                
+                // 创建Blob和下载链接
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                
+                // 设置下载文件名（包含日期时间）
+                const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
+                const timeStr = new Date().toLocaleTimeString().replace(/:/g, '-');
+                link.download = `todo-data-${dateStr}-${timeStr}.todo`;
+                
+                link.href = url;
+                document.body.appendChild(link);
+                link.click();
+                
+                // 清理
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                showSuccessModal('数据导出成功！');
+            }
+                
+                // 处理数据导入
+                function handleDataImport(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    // 验证文件类型
+                    if (!file.name.endsWith('.todo')) {
+                        showErrorModal('请上传.todo格式的文件');
+                        e.target.value = ''; // 清空文件选择
+                        return;
+                    }
+                    
+                    // 读取文件
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        let importSuccessful = false;
+                        try {
+                            // 解析JSON
+                            const content = event.target.result;
+                            if (!content || content.trim() === '') {
+                                throw new Error('文件内容为空');
+                            }
+                            
+                            const importedData = JSON.parse(content);
+                            
+                            // 验证数据结构
+                            if (!validateImportedData(importedData)) {
+                                showErrorModal('无效的数据文件格式');
+                                return;
+                            }
+                            
+                            // 导入数据
+                            importData(importedData);
+                            importSuccessful = true; // 标记导入成功
+                        } catch (error) {
+                            if (!importSuccessful) { // 只有在导入未成功时才显示错误
+                                console.error('导入过程中发生错误:', error);
+                                // 避免在数据已成功导入的情况下显示错误
+                                if (!document.getElementById('success-modal').classList.contains('opacity-100')) {
+                                    showErrorModal('数据导入失败，请检查文件格式是否正确');
+                                }
+                            }
+                        } finally {
+                            e.target.value = ''; // 清空文件选择
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+                
+                // 验证导入的数据结构
+                function validateImportedData(data) {
+                    // 检查必需的字段
+                    if (!data.hasOwnProperty('tasks') ||
+                        !data.hasOwnProperty('userPoints') ||
+                        !data.hasOwnProperty('rewards') ||
+                        !data.hasOwnProperty('redeemedRewards')) {
+                        return false;
+                    }
+                    
+                    // 检查数据类型
+                    if (!Array.isArray(data.tasks) ||
+                        !Array.isArray(data.rewards) ||
+                        !Array.isArray(data.redeemedRewards) ||
+                        typeof data.userPoints !== 'number') {
+                        return false;
+                    }
+                    
+                    return true;
+                }
+                
+                // 导入数据
+                function importData(data) {
+                    // 更新数据
+                    tasks = data.tasks || [];
+                    userPoints = data.userPoints || 0;
+                    rewards = data.rewards || [];
+                    redeemedRewards = data.redeemedRewards || [];
+                    contributionData = data.contributionData || {}; // 导入贡献数据
+                    
+                    // 保存到localStorage
+                    saveTasks();
+                    saveUserPoints();
+                    saveRewards();
+                    saveRedeemedRewards();
+                    saveContributionData(); // 保存贡献数据
+                    
+                    // 更新UI
+                    renderTasks();
+                    updateTaskCount();
+                    updateUserPoints();
+                    renderRewards();
+                    renderRedeemedRewards();
+                    updateClearButtonState();
+                    updateClearUsedRewardsButtonState();
+                    renderContributionCalendar(); // 更新贡献日历
+                    
+                    showSuccessModal('数据导入成功！');
+                }
+                
+                // 使用事件委托处理任务操作
+                taskList.addEventListener('click', function(e) {
+                    // 处理完成/未完成切换
+                    if (e.target.closest('.task-checkbox')) {
+                        const taskId = parseInt(e.target.closest('.task-item').dataset.id);
+                        toggleTaskStatus(taskId);
+                    }
+                    
+                    // 处理删除任务
+                    if (e.target.closest('.task-delete')) {
+                        const taskId = parseInt(e.target.closest('.task-item').dataset.id);
+                        deleteTask(taskId);
+                    }
+                    
+                    // 处理添加子任务 - 修复事件处理
+                    if (e.target.closest('.add-subtask-btn') || e.target.closest('.fa-plus-circle')) {
+                        const taskId = parseInt(e.target.closest('.task-item').dataset.id);
+                        console.log('Opening subtask modal for task ID:', taskId);
+                        openSubtaskModal(taskId);
+                    }
+                    
+                    // 处理折叠/展开子任务
+                    if (e.target.closest('.toggle-children-btn')) {
+                        const taskId = parseInt(e.target.closest('.task-item').dataset.id);
+                        toggleTaskChildren(taskId);
+                    }
+                });
+                
+                // 双击编辑任务
+                taskList.addEventListener('dblclick', function(e) {
+                    const taskTextEl = e.target.closest('.task-text');
+                    if (taskTextEl) {
+                        const taskItem = taskTextEl.closest('.task-item');
+                        const taskId = parseInt(taskItem.dataset.id);
+                        editTask(taskId, taskTextEl);
+                    }
+                });
+            }
+            
+            // 添加新任务
+            function addTask() {
+                const text = taskInput.value.trim();
+                if (!text) return;
+                
+                // 获取积分设置，默认为10
+                const points = parseInt(taskPoints.value) || 10;
+                
+                const newTask = {
+                    id: Date.now(),
+                    text: text,
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    children: [], // 添加子任务数组
+                    collapsed: false, // 添加折叠状态
+                    points: points // 添加积分字段
+                };
+                
+                tasks.push(newTask);
+                saveTasks();
+                renderTasks();
+                updateTaskCount();
+                updateClearButtonState();
+                
+                // 重置输入框
+                taskInput.value = '';
+                taskPoints.value = 10; // 重置为默认值
+                taskInput.focus();
+            }
+            
+            // 打开添加子任务模态框 - 增强显示逻辑
+            function openSubtaskModal(parentId) {
+                parentTaskIdInput.value = parentId;
+                subtaskInput.value = '';
+                // 确保模态框可见
+                subtaskModal.classList.remove('hidden');
+                // 添加动画效果
+                subtaskModal.classList.add('opacity-100');
+                // 强制聚焦
+                setTimeout(() => {
+                    subtaskInput.focus();
+                }, 100);
+            }
+            
+            // 关闭子任务模态框 - 增强关闭逻辑
+            function closeSubtaskModal() {
+                subtaskModal.classList.add('hidden');
+                subtaskModal.classList.remove('opacity-100');
+                subtaskInput.value = '';
+                subtaskPoints.value = 5; // 重置为默认值
+                parentTaskIdInput.value = '';
+            }
+            
+            // 添加子任务 - 修复添加逻辑
+            function addSubtask() {
+                const text = subtaskInput.value.trim();
+                const parentId = parseInt(parentTaskIdInput.value);
+                
+                if (!text || !parentId) {
+                    console.error('子任务内容不能为空或父任务ID无效');
+                    return;
+                }
+                
+                // 获取积分设置，默认为5
+                const points = parseInt(subtaskPoints.value) || 5;
+                
+                const newSubtask = {
+                    id: Date.now(),
+                    text: text,
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    parentId: parentId,
+                    children: [], // 子任务也可以有自己的子任务
+                    collapsed: false,
+                    points: points // 添加积分字段
+                };
+                
+                // 找到父任务并添加子任务
+                function findAndAddSubtask(taskList, parentId, subtask) {
+                    for (let i = 0; i < taskList.length; i++) {
+                        if (taskList[i].id === parentId) {
+                            // 确保父任务的children数组存在
+                            if (!taskList[i].children) {
+                                taskList[i].children = [];
+                            }
+                            taskList[i].children.push(subtask);
+                            return true;
+                        }
+                        if (taskList[i].children && taskList[i].children.length > 0) {
+                            if (findAndAddSubtask(taskList[i].children, parentId, subtask)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                
+                const added = findAndAddSubtask(tasks, parentId, newSubtask);
+                if (added) {
+                    console.log('子任务添加成功');
+                    saveTasks();
+                    renderTasks();
+                    updateTaskCount();
+                    updateClearButtonState();
+                    
+                    closeSubtaskModal();
+                } else {
+                    console.error('未找到父任务:', parentId);
+                }
+            }
+            
+            // 切换任务完成状态
+            function toggleTaskStatus(id) {
+                // 记录积分变化：正数表示获得积分，负数表示扣除积分
+                let pointsChange = 0;
+                
+                // 递归查找任务
+                function findAndToggleTask(taskList, targetId) {
+                    for (let i = 0; i < taskList.length; i++) {
+                        if (taskList[i].id === targetId) {
+                            // 切换当前任务状态
+                            const wasCompleted = taskList[i].completed;
+                            const newCompleted = !wasCompleted;
+                            taskList[i].completed = newCompleted;
+                            
+                            const taskPoints = taskList[i].points || 0;
+                            const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期字符串 YYYY-MM-DD
+                            
+                            // 如果任务从未完成变为已完成，获得积分并增加贡献
+                            if (!wasCompleted && newCompleted) {
+                                pointsChange += taskPoints;
+                                showPointsNotification(`+${taskPoints} 积分`);
+                                
+                                // 增加当日贡献计数
+                                contributionData[todayDate] = (contributionData[todayDate] || 0) + 1;
+                                saveContributionData();
+                            }
+                            // 如果任务从已完成变为未完成，扣除积分并减少贡献
+                            else if (wasCompleted && !newCompleted) {
+                                pointsChange -= taskPoints;
+                                showPointsNotification(`-${taskPoints} 积分`);
+                                
+                                // 减少当日贡献计数（确保不会变为负数）
+                                if (contributionData[todayDate] > 0) {
+                                    contributionData[todayDate] = (contributionData[todayDate] || 1) - 1;
+                                    saveContributionData();
+                                }
+                            }
+                            
+                            // 如果有子任务，同步子任务状态
+                            if (taskList[i].children && taskList[i].children.length > 0) {
+                                updateChildrenStatus(taskList[i].children, newCompleted, wasCompleted);
+                            }
+                            return true;
+                        }
+                        if (taskList[i].children && taskList[i].children.length > 0) {
+                            if (findAndToggleTask(taskList[i].children, targetId)) {
+                                // 检查是否需要更新父任务状态
+                                updateParentTaskStatus(taskList[i]);
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                
+                // 更新子任务状态
+                function updateChildrenStatus(children, completed, parentWasCompleted) {
+                    children.forEach(child => {
+                        const wasCompleted = child.completed;
+                        child.completed = completed;
+                        
+                        const childPoints = child.points || 0;
+                        const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期字符串 YYYY-MM-DD
+                        
+                        // 如果父任务从未完成变为已完成，且子任务也从未完成变为已完成，获得积分并增加贡献
+                        if (!parentWasCompleted && completed && !wasCompleted) {
+                            pointsChange += childPoints;
+                            showPointsNotification(`+${childPoints} 积分`);
+                            
+                            // 增加当日贡献计数
+                            contributionData[todayDate] = (contributionData[todayDate] || 0) + 1;
+                            saveContributionData();
+                        }
+                        // 如果父任务从已完成变为未完成，且子任务也从已完成变为未完成，扣除积分并减少贡献
+                        else if (parentWasCompleted && !completed && wasCompleted) {
+                            pointsChange -= childPoints;
+                            showPointsNotification(`-${childPoints} 积分`);
+                            
+                            // 减少当日贡献计数（确保不会变为负数）
+                            if (contributionData[todayDate] > 0) {
+                                contributionData[todayDate] = (contributionData[todayDate] || 1) - 1;
+                                saveContributionData();
+                            }
+                        }
+                        
+                        if (child.children && child.children.length > 0) {
+                            updateChildrenStatus(child.children, completed, parentWasCompleted);
+                        }
+                    });
+                }
+                
+                // 更新父任务状态（如果所有子任务都完成）
+                function updateParentTaskStatus(task) {
+                    if (!task.children || task.children.length === 0) return;
+                    
+                    const allCompleted = task.children.every(child => {
+                        // 递归检查子任务的子任务
+                        if (child.children && child.children.length > 0) {
+                            updateParentTaskStatus(child);
+                        }
+                        return child.completed;
+                    });
+                    
+                    const wasCompleted = task.completed;
+                    task.completed = allCompleted;
+                    
+                    const taskPoints = task.points || 0;
+                    const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期字符串 YYYY-MM-DD
+                    
+                    // 如果父任务因所有子任务完成而变为完成状态，获得积分并增加贡献
+                    if (!wasCompleted && allCompleted) {
+                        pointsChange += taskPoints;
+                        showPointsNotification(`+${taskPoints} 积分`);
+                        
+                        // 增加当日贡献计数
+                        contributionData[todayDate] = (contributionData[todayDate] || 0) + 1;
+                        saveContributionData();
+                        
+                        // 更新贡献日历UI
+                        renderContributionCalendar();
+                    }
+                    // 如果父任务因部分子任务未完成而变为未完成状态，扣除积分并减少贡献
+                    else if (wasCompleted && !allCompleted) {
+                        pointsChange -= taskPoints;
+                        showPointsNotification(`-${taskPoints} 积分`);
+                        
+                        // 减少当日贡献计数（确保不会变为负数）
+                        if (contributionData[todayDate] > 0) {
+                            contributionData[todayDate] = (contributionData[todayDate] || 1) - 1;
+                            saveContributionData();
+                            
+                            // 更新贡献日历UI
+                            renderContributionCalendar();
+                        }
+                        
+                    }
+                }
+                
+                findAndToggleTask(tasks, id);
+                
+                // 更新用户积分
+                if (pointsChange !== 0) {
+                    userPoints += pointsChange;
+                    // 确保积分不会变为负数
+                    if (userPoints < 0) userPoints = 0;
+                    saveUserPoints();
+                    updateUserPoints();
+                }
+                
+                saveTasks();
+                renderTasks();
+                updateTaskCount();
+                updateClearButtonState();
+                renderContributionCalendar(); // 更新贡献日历UI
+            }
+            
+            // 显示积分通知
+            function showPointsNotification(message) {
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50 transform transition-all duration-500 opacity-0 translate-y-[-20px]';
+                notification.innerHTML = `<i class="fa fa-star text-yellow-500"></i>${message}`;
+                document.body.appendChild(notification);
+                
+                // 显示动画
+                setTimeout(() => {
+                    notification.classList.remove('opacity-0', 'translate-y-[-20px]');
+                }, 10);
+                
+                // 自动消失
+                setTimeout(() => {
+                    notification.classList.add('opacity-0', 'translate-y-[-20px]');
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 500);
+                }, 2000);
+            }
+            
+            // 切换任务子任务显示/隐藏
+            function toggleTaskChildren(id) {
+                function findAndToggle(taskList, targetId) {
+                    for (let i = 0; i < taskList.length; i++) {
+                        if (taskList[i].id === targetId) {
+                            taskList[i].collapsed = !taskList[i].collapsed;
+                            return true;
+                        }
+                        if (taskList[i].children && taskList[i].children.length > 0) {
+                            if (findAndToggle(taskList[i].children, targetId)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                
+                findAndToggle(tasks, id);
+                saveTasks();
+                renderTasks();
+            }
+            
+            // 删除任务
+            function deleteTask(id) {
+                showConfirmModal('确定要删除这个任务吗？这将同时删除其所有子任务。', function(confirmed) {
+                    if (confirmed) {
+                        function filterTasks(taskList) {
+                            return taskList.filter(task => {
+                                if (task.id === id) {
+                                    return false; // 删除目标任务及其所有子任务
+                                }
+                                if (task.children && task.children.length > 0) {
+                                    task.children = filterTasks(task.children);
+                                }
+                                return true;
+                            });
+                        }
+                        
+                        tasks = filterTasks(tasks);
+                        saveTasks();
+                        renderTasks();
+                        updateTaskCount();
+                        updateClearButtonState();
+                    }
+                });
+            }
+            
+            // 编辑任务
+            function editTask(id, taskTextEl) {
+                // 递归查找任务
+                function findTask(taskList, targetId) {
+                    for (let i = 0; i < taskList.length; i++) {
+                        if (taskList[i].id === targetId) {
+                            return taskList[i];
+                        }
+                        if (taskList[i].children && taskList[i].children.length > 0) {
+                            const found = findTask(taskList[i].children, targetId);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                }
+                
+                const task = findTask(tasks, id);
+                if (!task) return;
+                
+                const originalText = task.text;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = originalText;
+                input.className = 'w-full px-4 py-2 rounded border-2 border-primary focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none';
+                
+                // 保存原始内容
+                const parent = taskTextEl.parentNode;
+                const originalHTML = taskTextEl.innerHTML;
+                
+                // 替换为输入框
+                taskTextEl.innerHTML = '';
+                taskTextEl.appendChild(input);
+                input.focus();
+                
+                // 处理编辑完成
+                function finishEditing(save = true) {
+                    if (save) {
+                        const newText = input.value.trim();
+                        if (newText) {
+                            task.text = newText;
+                            saveTasks();
+                            renderTasks();
+                        } else {
+                            // 空文本则删除任务
+                            deleteTask(id);
+                        }
+                    }
+                }
+                
+                // 失去焦点时保存
+                input.addEventListener('blur', () => finishEditing());
+                
+                // Enter保存，Escape取消
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        finishEditing();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        taskTextEl.innerHTML = originalHTML;
+                    }
+                });
+            }
+            
+            // 清空已完成任务
+            function clearCompletedTasks() {
+                function filterCompletedTasks(taskList) {
+                    return taskList.filter(task => {
+                        if (task.completed) {
+                            return false; // 删除已完成任务
+                        }
+                        if (task.children && task.children.length > 0) {
+                            task.children = filterCompletedTasks(task.children);
+                        }
+                        return true;
+                    });
+                }
+                
+                const completedTasksCount = countCompletedTasks(tasks);
+                if (completedTasksCount === 0) return;
+                
+                // 直接清空已完成任务，不显示提示框
+                tasks = filterCompletedTasks(tasks);
+                saveTasks();
+                renderTasks();
+                updateTaskCount();
+                updateClearButtonState();
+            }
+            
+            // 计算已完成任务数量
+            function countCompletedTasks(taskList) {
+                let count = 0;
+                taskList.forEach(task => {
+                    if (task.completed) count++;
+                    if (task.children && task.children.length > 0) {
+                        count += countCompletedTasks(task.children);
+                    }
+                });
+                return count;
+            }
+            
+            // 保存任务到localStorage
+            function saveTasks() {
+                localStorage.setItem('todoTasks', JSON.stringify(tasks));
+            }
+            
+            // 保存用户积分到localStorage
+            function saveUserPoints() {
+                localStorage.setItem('todoUserPoints', userPoints.toString());
+            }
+            
+            // 保存奖励到localStorage
+            function saveRewards() {
+                localStorage.setItem('todoRewards', JSON.stringify(rewards));
+            }
+            
+            // 保存已兑换奖励到localStorage
+            function saveRedeemedRewards() {
+                localStorage.setItem('todoRedeemedRewards', JSON.stringify(redeemedRewards));
+            }
+            
+            // 保存贡献数据到localStorage
+            function saveContributionData() {
+                localStorage.setItem('todoContributionData', JSON.stringify(contributionData));
+            }
+            
+            // 更新用户积分显示
+            function updateUserPoints() {
+                userPointsElement.textContent = userPoints;
+                if (rewardsPointsElement) {
+                    rewardsPointsElement.textContent = userPoints;
+                }
+            }
+            
+            // 打开奖励兑换模态框
+            function openRewardsModal() {
+                updateUserPoints();
+                renderRewards();
+                rewardsModal.classList.remove('hidden');
+                rewardsModal.classList.add('opacity-100');
+            }
+            
+            // 关闭奖励兑换模态框
+            function closeRewardsModal() {
+                rewardsModal.classList.add('hidden');
+                rewardsModal.classList.remove('opacity-100');
+            }
+            
+            // 关闭成功提示模态框
+            function closeSuccessModal() {
+                successModal.classList.add('hidden');
+                successModal.classList.remove('opacity-100');
+            }
+            
+            // 显示成功提示模态框
+            function showSuccessModal(message) {
+                successMessage.textContent = message;
+                successModal.classList.remove('hidden');
+                successModal.classList.add('opacity-100');
+            }
+            
+            // 显示错误提示模态框
+            function showErrorModal(message) {
+                errorMessage.textContent = message;
+                errorModal.classList.remove('hidden');
+                errorModal.classList.add('opacity-100');
+            }
+            
+            // 显示确认对话框
+            function showConfirmModal(message, callback) {
+                confirmMessage.textContent = message;
+                confirmCallback = callback;
+                confirmModal.classList.remove('hidden');
+                confirmModal.classList.add('opacity-100');
+                document.body.style.overflow = 'hidden';
+            }
+            
+            // 清空所有积分
+            function clearAllPoints() {
+                // 清空积分
+                userPoints = 0;
+                
+                // 保存到localStorage
+                saveUserPoints();
+                
+                // 更新UI
+                updateUserPoints();
+                
+                // 关闭弹窗
+                clearPointsConfirmModal.classList.add('hidden');
+                document.body.style.overflow = '';
+                
+                // 显示成功消息
+                showSuccessModal('所有积分已清空！');
+            }
+            
+            // 渲染奖励列表
+            function renderRewards() {
+                rewardsList.innerHTML = '';
+                
+                rewards.forEach(reward => {
+                    const canAfford = userPoints >= reward.cost;
+                    
+                    const rewardEl = document.createElement('div');
+                    rewardEl.className = `p-3 rounded-lg border flex justify-between items-center ${canAfford ? 'border-green-200 bg-green-50' : 'border-gray-200'}`;
+                    
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'flex items-center gap-2';
+                    infoDiv.innerHTML = `
+                        <i class="fa fa-gift ${canAfford ? 'text-green-500' : 'text-gray-400'}"></i>
+                        <div>
+                            <div class="font-medium">${reward.name}</div>
+                            <div class="text-sm text-gray-500">${reward.cost} 积分</div>
+                        </div>
+                    `;
+                    
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'flex items-center gap-2';
+                    
+                    const redeemBtn = document.createElement('button');
+                    redeemBtn.className = `px-3 py-1 rounded-full text-sm ${canAfford ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`;
+                    redeemBtn.textContent = canAfford ? '兑换' : '积分不足';
+                    redeemBtn.disabled = !canAfford;
+                    
+                    if (canAfford) {
+                        redeemBtn.addEventListener('click', () => redeemReward(reward));
+                    }
+                    
+                    // 为非默认奖励添加删除按钮
+                    if (!reward.isDefault) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'w-7 h-7 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100';
+                        deleteBtn.innerHTML = '<i class="fa fa-times"></i>';
+                        deleteBtn.title = '删除奖励';
+                        deleteBtn.addEventListener('click', () => deleteReward(reward.id));
+                        actionsDiv.appendChild(deleteBtn);
+                    }
+                    
+                    actionsDiv.appendChild(redeemBtn);
+                    rewardEl.appendChild(infoDiv);
+                    rewardEl.appendChild(actionsDiv);
+                    
+                    rewardsList.appendChild(rewardEl);
+                });
+            }
+            
+            // 删除奖励
+            function deleteReward(rewardId) {
+                // 过滤掉要删除的奖励
+                rewards = rewards.filter(reward => reward.id !== rewardId);
+                
+                // 保存更新后的奖励列表
+                saveRewards();
+                
+                // 重新渲染奖励列表
+                renderRewards();
+            }
+            
+            // 添加自定义奖励
+            function addCustomReward() {
+                const name = customRewardName.value.trim();
+                const cost = parseInt(customRewardCost.value);
+                const errorMessage = document.getElementById('reward-error-message');
+                
+                // 隐藏之前的错误信息
+                errorMessage.classList.add('hidden');
+                
+                // 重置输入框边框样式
+                customRewardName.classList.remove('border-red-500');
+                customRewardCost.classList.remove('border-red-500');
+                
+                if (!name || !cost || cost < 1) {
+                    // 显示错误信息
+                    errorMessage.classList.remove('hidden');
+                    
+                    // 高亮错误输入框
+                    if (!name) customRewardName.classList.add('border-red-500');
+                    if (!cost || cost < 1) customRewardCost.classList.add('border-red-500');
+                    
+                    return;
+                }
+                
+                const newReward = {
+                    id: Date.now(),
+                    name: name,
+                    cost: cost,
+                    isDefault: false
+                };
+                
+                rewards.push(newReward);
+                saveRewards();
+                renderRewards();
+                
+                // 清空输入框
+                customRewardName.value = '';
+                customRewardCost.value = '';
+            }
+            
+            // 兑换奖励
+            function redeemReward(reward) {
+                if (userPoints >= reward.cost) {
+                    // 扣除积分
+                    userPoints -= reward.cost;
+                    saveUserPoints();
+                    updateUserPoints();
+                    
+                    // 创建已兑换奖励记录
+                    const redeemedReward = {
+                        id: Date.now(),
+                        rewardId: reward.id,
+                        name: reward.name,
+                        cost: reward.cost,
+                        redeemedAt: new Date().toISOString(),
+                        used: false
+                    };
+                    
+                    // 添加到已兑换奖励列表
+                    redeemedRewards.push(redeemedReward);
+                    saveRedeemedRewards();
+                    renderRedeemedRewards();
+                    
+                    // 显示成功消息
+                    successMessage.textContent = `恭喜你成功兑换了「${reward.name}」！`;
+                    successModal.classList.remove('hidden');
+                    successModal.classList.add('opacity-100');
+                    
+                    // 重新渲染奖励列表
+                    renderRewards();
+                }
+            }
+            
+            // 渲染已兑换奖励列表
+            function renderRedeemedRewards() {
+                redeemedRewardsList.innerHTML = '';
+                
+                // 按兑换时间倒序排列
+                const sortedRewards = [...redeemedRewards].sort((a, b) => new Date(b.redeemedAt) - new Date(a.redeemedAt));
+                
+                if (sortedRewards.length === 0) {
+                    if (!redeemedRewardsList.contains(emptyRewardsState)) {
+                        redeemedRewardsList.appendChild(emptyRewardsState);
+                    }
+                } else {
+                    if (redeemedRewardsList.contains(emptyRewardsState)) {
+                        redeemedRewardsList.removeChild(emptyRewardsState);
+                    }
+                    
+                    sortedRewards.forEach(reward => {
+                        const rewardEl = document.createElement('div');
+                        rewardEl.className = `p-3 rounded-lg border flex justify-between items-center ${reward.used ? 'border-gray-200 bg-gray-50' : 'border-yellow-200 bg-yellow-50'}`;
+                        rewardEl.dataset.id = reward.id;
+                        
+                        const infoDiv = document.createElement('div');
+                        infoDiv.className = 'flex items-center gap-2';
+                        infoDiv.innerHTML = `
+                            <i class="fa fa-gift ${reward.used ? 'text-gray-400' : 'text-yellow-500'}"></i>
+                            <div>
+                                <div class="font-medium ${reward.used ? 'text-gray-500 line-through' : 'text-gray-800'}">${reward.name}</div>
+                                <div class="text-sm text-gray-500">${formatDate(reward.redeemedAt)} · ${reward.cost} 积分</div>
+                            </div>
+                        `;
+                        
+                        // 使用状态复选框
+                        const useCheckbox = document.createElement('div');
+                        useCheckbox.className = `task-checkbox w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${reward.used ? 'border-secondary bg-secondary text-white' : 'border-gray-300 hover:border-secondary'}`;
+                        useCheckbox.innerHTML = reward.used ? '<i class="fa fa-check text-xs"></i>' : '';
+                        
+                        rewardEl.appendChild(infoDiv);
+                        rewardEl.appendChild(useCheckbox);
+                        
+                        redeemedRewardsList.appendChild(rewardEl);
+                    });
+                }
+            }
+            
+            // 切换已兑换奖励使用状态
+            function toggleRewardUsedStatus(id) {
+                const reward = redeemedRewards.find(r => r.id === id);
+                if (reward) {
+                    reward.used = !reward.used;
+                    saveRedeemedRewards();
+                    renderRedeemedRewards();
+                    updateClearUsedRewardsButtonState(); // 更新清空按钮状态
+                }
+            }
+            
+            // 清空已使用的奖励
+            function clearUsedRewards() {
+                const usedRewardsCount = redeemedRewards.filter(r => r.used).length;
+                if (usedRewardsCount === 0) return;
+                
+                // 直接清空已使用奖励，不显示提示框
+                redeemedRewards = redeemedRewards.filter(r => !r.used);
+                saveRedeemedRewards();
+                renderRedeemedRewards();
+                updateClearUsedRewardsButtonState(); // 更新清空按钮状态
+            }
+            
+            // 更新清空已使用奖励按钮状态
+            function updateClearUsedRewardsButtonState() {
+                const clearUsedRewardsBtn = document.getElementById('clear-used-rewards-btn');
+                const hasUsedRewards = redeemedRewards.some(r => r.used);
+                clearUsedRewardsBtn.disabled = !hasUsedRewards;
+            }
+            
+            // 渲染任务列表
+            function renderTasks() {
+                // 清空现有任务项（保留空状态元素）
+                const taskItems = taskList.querySelectorAll('.task-item');
+                taskItems.forEach(item => item.remove());
+                
+                // 仅渲染顶级任务（没有父任务的任务）
+                const rootTasks = tasks.filter(task => !task.parentId);
+                
+                // 显示或隐藏空状态
+                if (rootTasks.length === 0) {
+                    if (!taskList.contains(emptyState)) {
+                        taskList.appendChild(emptyState);
+                    }
+                } else {
+                    if (taskList.contains(emptyState)) {
+                        taskList.removeChild(emptyState);
+                    }
+                    
+                    // 渲染所有顶级任务
+                    renderTaskItems(taskList, rootTasks);
+                }
+            }
+            
+            // 递归渲染任务项
+            function renderTaskItems(container, taskItems, isSubtask = false) {
+                // 按创建时间排序（最新的在前）
+                const sortedTasks = [...taskItems].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                
+                sortedTasks.forEach(task => {
+                    // 应用过滤条件
+                    if (currentFilter === 'active' && task.completed) return;
+                    if (currentFilter === 'completed' && !task.completed) return;
+                    
+                    const taskEl = createTaskElement(task, isSubtask);
+                    container.appendChild(taskEl);
+                    
+                    // 如果有子任务且未折叠，递归渲染
+                    if (task.children && task.children.length > 0 && !task.collapsed) {
+                        const subtaskContainer = document.createElement('div');
+                        subtaskContainer.className = 'subtask-container space-y-2';
+                        taskEl.appendChild(subtaskContainer);
+                        renderTaskItems(subtaskContainer, task.children, true);
+                    }
+                });
+            }
+            
+            // 创建单个任务元素
+            function createTaskElement(task, isSubtask = false) {
+                const taskEl = document.createElement('div');
+                const subtaskClass = isSubtask ? 'mt-2' : '';
+                taskEl.className = `task-item flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors ${subtaskClass}`;
+                taskEl.dataset.id = task.id;
+                
+                // 有子任务时显示折叠/展开按钮
+                let toggleButton = '';
+                if (task.children && task.children.length > 0) {
+                    const iconClass = task.collapsed ? 'fa-caret-right' : 'fa-caret-down';
+                    toggleButton = `<div class="toggle-children-btn w-4 h-4 cursor-pointer text-gray-500 flex-shrink-0"><i class="fa ${iconClass}"></i></div>`;
+                }
+                
+                // 复选框
+                const checkbox = document.createElement('div');
+                checkbox.className = `task-checkbox w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${task.completed ? 'border-secondary bg-secondary text-white' : 'border-gray-300 hover:border-primary'}`;
+                checkbox.innerHTML = task.completed ? '<i class="fa fa-check text-xs"></i>' : '';
+                
+                // 任务内容
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'flex-1 min-w-0';
+                
+                const textDiv = document.createElement('div');
+                textDiv.className = `task-text text-sm sm:text-base font-medium break-words ${task.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`;
+                textDiv.textContent = task.text;
+                
+                // 任务信息栏：日期和积分
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex justify-between items-center mt-1';
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'text-xs text-gray-400';
+                dateSpan.textContent = formatDate(task.createdAt);
+                
+                const pointsSpan = document.createElement('span');
+                pointsSpan.className = 'text-xs font-medium flex items-center gap-1';
+                pointsSpan.innerHTML = `<i class="fa fa-star text-yellow-400"></i>${task.points || 0} 积分`;
+                
+                infoDiv.appendChild(dateSpan);
+                infoDiv.appendChild(pointsSpan);
+                
+                contentDiv.appendChild(textDiv);
+                contentDiv.appendChild(infoDiv);
+                
+                // 操作按钮
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex items-center gap-1';
+                
+                // 添加子任务按钮 - 确保可点击性
+                const addSubtaskBtn = document.createElement('button');
+                addSubtaskBtn.className = 'add-subtask-btn text-gray-400 hover:text-primary p-1.5 rounded-full transition-colors';
+                addSubtaskBtn.innerHTML = '<i class="fa fa-plus-circle"></i>';
+                addSubtaskBtn.title = '添加子任务';
+                addSubtaskBtn.type = 'button'; // 明确指定按钮类型，避免表单提交
+                
+                // 删除按钮
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'task-delete text-gray-400 hover:text-danger p-1 rounded-full transition-colors';
+                deleteBtn.innerHTML = '<i class="fa fa-times"></i>';
+                deleteBtn.title = '删除任务';
+                
+                actionsDiv.appendChild(addSubtaskBtn);
+                actionsDiv.appendChild(deleteBtn);
+                
+                // 组装
+                if (toggleButton) {
+                    const toggleBtnEl = document.createElement('div');
+                    toggleBtnEl.innerHTML = toggleButton;
+                    taskEl.appendChild(toggleBtnEl.firstElementChild);
+                }
+                taskEl.appendChild(checkbox);
+                taskEl.appendChild(contentDiv);
+                taskEl.appendChild(actionsDiv);
+                
+                return taskEl;
+            }
+            
+            // 更新任务计数
+            function updateTaskCount() {
+                function countAllTasks(taskList) {
+                    let count = taskList.length;
+                    taskList.forEach(task => {
+                        if (task.children && task.children.length > 0) {
+                            count += countAllTasks(task.children);
+                        }
+                    });
+                    return count;
+                }
+                
+                taskCountElement.textContent = countAllTasks(tasks);
+            }
+            
+            // 更新清空按钮状态
+            function updateClearButtonState() {
+                const hasCompleted = countCompletedTasks(tasks) > 0;
+                clearBtn.disabled = !hasCompleted;
+            }
+            
+            // 格式化日期
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return '刚刚';
+                if (diffMins < 60) return `${diffMins}分钟前`;
+                if (diffHours < 24) return `${diffHours}小时前`;
+                if (diffDays < 7) return `${diffDays}天前`;
+                
+                return date.toLocaleDateString('zh-CN');
+            }
+            
+            // 渲染贡献日历
+            function renderContributionCalendar(selectedYear = null) {
+                const calendarGrid = document.getElementById('calendar-grid');
+                const taskRecordText = document.getElementById('calendar-title');
+                if (!calendarGrid) return;
+                
+                calendarGrid.innerHTML = '';
+                
+                // 获取选择的年份，如果没有选择则使用当前年份
+                const year = selectedYear || new Date().getFullYear();
+                
+                // 统计该年份的总任务数
+                let totalTasks = 0;
+                const yearPrefix = year.toString();
+                for (const dateString in contributionData) {
+                    if (dateString.startsWith(yearPrefix)) {
+                        totalTasks += contributionData[dateString] || 0;
+                    }
+                }
+                
+                // 更新显示文本
+                if (taskRecordText) {
+                    taskRecordText.textContent = `${year}年总计完成任务${totalTasks}件`;
+                }
+                
+                // 从一年的第一天开始
+                const startDate = new Date(year, 0, 1); // 1月1日
+                
+                // 获取1月1日是星期几（0是周日，1是周一，...，6是周六）
+                const firstDayOfWeek = startDate.getDay();
+
+                console.log(firstDayOfWeek);
+                
+                // 生成网格（53周 × 7天）- 按周为列，每天为行
+                for (let week = 0; week < 53; week++) {
+                    // 为每周创建一个容器（列）
+                    const weekContainer = document.createElement('div');
+                    weekContainer.className = 'flex flex-col gap-[3px]';
+                    
+                    for (let day = 0; day < 7; day++) {
+                        // 计算当前日期的索引
+                        const dayIndex = week * 7 + day;
+                        
+                        // 计算相对于1月1日的偏移天数
+                        const daysFromFirstDay = dayIndex - firstDayOfWeek;
+                        console.log(daysFromFirstDay);
+                        // 如果是1月1日之前的日期，显示空格子
+                        if (daysFromFirstDay < 0) {
+                            const emptyGridItem = document.createElement('div');
+                            emptyGridItem.className = 'w-3 h-3 rounded-sm border border-transparent';
+                            weekContainer.appendChild(emptyGridItem);
+                            continue;
+                        }
+                        
+                        // 创建当前日期
+                        const currentDate = new Date(startDate);
+                        currentDate.setDate(1 + daysFromFirstDay);
+                        console.log(currentDate);
+                        
+                        // 如果超出当前年份，显示空格子
+                        if (currentDate.getFullYear() > year) {
+                            const emptyGridItem = document.createElement('div');
+                            emptyGridItem.className = 'w-3 h-3 rounded-sm border border-transparent';
+                            weekContainer.appendChild(emptyGridItem);
+                            continue;
+                        }
+                        
+                        const dateyear = currentDate.getFullYear();
+                        const datemonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+                        const dateday = String(currentDate.getDate()).padStart(2, '0');
+
+                        const dateString = `${dateyear}-${datemonth}-${dateday}`;
+                        console.log(currentDate);
+                        console.log(dateString);
+                        const contributionCount = contributionData[dateString] || 0;
+                        
+                        // 根据贡献数量设置背景颜色
+                        let bgColor = 'bg-gray-100';
+                        if (contributionCount > 0 && contributionCount <= 3) {
+                            bgColor = 'bg-green-100';
+                        } else if (contributionCount > 3 && contributionCount <= 6) {
+                            bgColor = 'bg-green-300';
+                        } else if (contributionCount > 6) {
+                            bgColor = 'bg-green-500';
+                        }
+                        
+                        // 创建日历格子 - 与星期标签大小匹配
+                        const gridItem = document.createElement('div');
+                        gridItem.className = `${bgColor} w-3 h-3 rounded-sm border border-gray-200 transition-all duration-200 hover:scale-125 hover:z-10`;
+                        gridItem.title = `${dateString}: ${contributionCount} 个任务完成`;
+                        
+                        // 将天添加到周容器中
+                        weekContainer.appendChild(gridItem);
+                    }
+                    
+                    // 将周容器添加到日历网格中
+                    calendarGrid.appendChild(weekContainer);
+                }
+            }
+            
+            // 初始化年份选择器
+            function initYearSelector() {
+                const yearSelector = document.getElementById('year-selector');
+                if (!yearSelector) return;
+                
+                // 获取当前年份
+                const currentYear = new Date().getFullYear();
+                
+                // 生成过去5年到未来1年的选项
+                for (let year = currentYear - 5; year <= currentYear + 1; year++) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `${year}年`;
+                    if (year === currentYear) {
+                        option.selected = true;
+                    }
+                    yearSelector.appendChild(option);
+                }
+                
+                // 添加年份变更事件监听器
+                yearSelector.addEventListener('change', function() {
+                    const selectedYear = parseInt(this.value);
+                    renderContributionCalendar(selectedYear);
+                });
+            }
+            
+            // 在初始化函数中添加渲染贡献日历
+            function init() {
+                renderTasks();
+                updateTaskCount();
+                updateUserPoints();
+                updateClearButtonState();
+                setupEventListeners();
+                renderRewards();
+                renderRedeemedRewards();
+                updateClearUsedRewardsButtonState(); // 初始化清空已使用奖励按钮状态
+                initYearSelector(); // 初始化年份选择器
+                renderContributionCalendar(); // 渲染贡献日历
+            }
+            
+            // 启动应用
+            init();
+        });
+    </script>
+</body>
+</html>
