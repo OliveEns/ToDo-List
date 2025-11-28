@@ -142,7 +142,7 @@
 
                     <!-- 清空按钮 -->
                     <div class="mt-6 text-center">
-                        <button id="clear-btn" class="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button id="clear-btn" class="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" title="已完成的任务将在5天后自动清空">
                             清空已完成任务
                         </button>
                     </div>
@@ -390,8 +390,8 @@
     </div>
 
     <script>
-        function getCurrentDateString() {
-            const today = new Date();
+        function getCurrentDateString(date) {
+            const today = date || new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const day = String(today.getDate()).padStart(2, '0');
@@ -1289,6 +1289,46 @@
                 updateClearButtonState();
             }
             
+            // 自动清空超过5天的已完成任务
+            function clearOldCompletedTasks() {
+                // 计算5天前的日期字符串
+                const fiveDaysAgo = new Date();
+                fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+                const fiveDaysAgoStr = getCurrentDateString(fiveDaysAgo);
+                
+                let hasClearedTasks = false;
+                
+                function filterOldTasks(taskList) {
+                    return taskList.filter(task => {
+                        // 检查任务是否已完成且完成时间超过5天
+                        if (task.completed && task.completedAt) {
+                            // 直接比较日期字符串（YYYY-MM-DD格式）
+                            // 如果完成日期早于5天前，则删除
+                            if (task.completedAt < fiveDaysAgoStr) {
+                                hasClearedTasks = true;
+                                return false;
+                            }
+                        }
+                        // 递归处理子任务
+                        if (task.children && task.children.length > 0) {
+                            task.children = filterOldTasks(task.children);
+                        }
+                        return true;
+                    });
+                }
+                
+                tasks = filterOldTasks(tasks);
+                
+                // 如果清空了任务，保存并更新UI
+                if (hasClearedTasks) {
+                    saveTasks();
+                    renderTasks();
+                    updateTaskCount();
+                    updateClearButtonState();
+                }
+            }
+            
+            
             // 计算已完成任务数量
             function countCompletedTasks(taskList) {
                 let count = 0;
@@ -1835,11 +1875,7 @@
                             continue;
                         }
                         
-                        const dateyear = currentDate.getFullYear();
-                        const datemonth = String(currentDate.getMonth() + 1).padStart(2, '0');
-                        const dateday = String(currentDate.getDate()).padStart(2, '0');
-
-                        const dateString = `${dateyear}-${datemonth}-${dateday}`;
+                        const dateString = getCurrentDateString(currentDate);
                         // console.log(currentDate);
                         // console.log(dateString);
                         const contributionCount = contributionData[dateString] || 0;
@@ -1896,6 +1932,9 @@
             
             // 在初始化函数中添加渲染贡献日历
             function init() {
+                // 先清空超过5天的已完成任务
+                clearOldCompletedTasks();
+                
                 renderTasks();
                 updateTaskCount();
                 updateUserPoints();
