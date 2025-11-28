@@ -60,7 +60,7 @@
 
         <!-- 主要内容 -->
         <main class="bg-white rounded-2xl p-6 todo-shadow max-w-full">
-            <!-- 添加任务表单 -->
+
             <!-- 积分显示 -->
             <div class="flex justify-between items-center mb-4">
                 <span id="task-count" class="text-sm text-gray-500">任务总数: <span class="font-medium text-primary">0</span></span>
@@ -192,13 +192,12 @@
                                 <span>7+</span>
                             </div>
                             <select id="year-selector" class="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
-                                <!-- 年份选项将动态生成 -->
                             </select>
                         </div>
                     </div>
                     <div class="flex">
                         <!-- 星期标签 -->
-                        <div class="flex flex-col gap-[3px] mr-2">
+                        <div class="flex flex-col gap-[3px] mr-2 flex-shrink-0">
                             <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">日</div>
                             <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">一</div>
                             <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">二</div>
@@ -207,9 +206,10 @@
                             <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">五</div>
                             <div class="text-[8px] text-gray-500 w-6 h-3 flex items-center justify-center">六</div>
                         </div>
-                        <!-- 日历网格 - 改为纵向排列，每列代表一周 -->
-                        <div id="calendar-grid" class="grid grid-cols-[repeat(53,minmax(12px,1fr))] gap-[3px] h-[calc(7*(0.75rem+3px))]">
-                            <!-- 日历网格将动态生成 -->
+                        <!-- 添加响应式滚动容器 -->
+                        <div class="overflow-x-auto flex-grow">
+                            <div id="calendar-grid" class="grid grid-cols-[repeat(53,minmax(12px,1fr))] gap-[3px] h-[calc(7*(0.75rem+3px))] min-w-max">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -243,7 +243,7 @@
         </div>
     </div>
 
-    <!-- 添加子任务模态框 -->
+    <!-- 子任务模态框 -->
     <div id="add-subtask-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 class="text-lg font-medium text-gray-900 mb-4">添加子任务</h3>
@@ -288,7 +288,6 @@
             </div>
             
             <div id="rewards-list" class="space-y-3 mb-4">
-                <!-- 奖励项将动态生成 -->
             </div>
             
             <div class="mt-4">
@@ -391,6 +390,13 @@
     </div>
 
     <script>
+        function getCurrentDateString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
         // 待办事项应用 - 支持多级任务和积分系统
         document.addEventListener('DOMContentLoaded', function() {
             // DOM 元素
@@ -466,7 +472,7 @@
                 setupEventListeners();
                 renderRewards();
                 renderRedeemedRewards();
-                updateClearUsedRewardsButtonState(); // 初始化清空已使用奖励按钮状态
+                updateClearUsedRewardsButtonState(); 
             }
             
             // 设置事件监听器
@@ -684,7 +690,7 @@
                     userPoints: userPoints,
                     rewards: rewards,
                     redeemedRewards: redeemedRewards,
-                    contributionData: contributionData, // 添加贡献数据
+                    contributionData: contributionData,
                     exportDate: new Date().toISOString(),
                     version: '1.0'
                 };
@@ -748,11 +754,10 @@
                             
                             // 导入数据
                             importData(importedData);
-                            importSuccessful = true; // 标记导入成功
+                            importSuccessful = true;
                         } catch (error) {
-                            if (!importSuccessful) { // 只有在导入未成功时才显示错误
+                            if (!importSuccessful) {
                                 console.error('导入过程中发生错误:', error);
-                                // 避免在数据已成功导入的情况下显示错误
                                 if (!document.getElementById('success-modal').classList.contains('opacity-100')) {
                                     showErrorModal('数据导入失败，请检查文件格式是否正确');
                                 }
@@ -792,14 +797,14 @@
                     userPoints = data.userPoints || 0;
                     rewards = data.rewards || [];
                     redeemedRewards = data.redeemedRewards || [];
-                    contributionData = data.contributionData || {}; // 导入贡献数据
+                    contributionData = data.contributionData || {};
                     
                     // 保存到localStorage
                     saveTasks();
                     saveUserPoints();
                     saveRewards();
                     saveRedeemedRewards();
-                    saveContributionData(); // 保存贡献数据
+                    saveContributionData(); 
                     
                     // 更新UI
                     renderTasks();
@@ -809,7 +814,7 @@
                     renderRedeemedRewards();
                     updateClearButtonState();
                     updateClearUsedRewardsButtonState();
-                    renderContributionCalendar(); // 更新贡献日历
+                    renderContributionCalendar();
                     
                     showSuccessModal('数据导入成功！');
                 }
@@ -866,9 +871,9 @@
                     text: text,
                     completed: false,
                     createdAt: new Date().toISOString(),
-                    children: [], // 添加子任务数组
-                    collapsed: false, // 添加折叠状态
-                    points: points // 添加积分字段
+                    children: [],
+                    collapsed: false,
+                    points: points
                 };
                 
                 tasks.push(newTask);
@@ -979,15 +984,18 @@
                             taskList[i].completed = newCompleted;
                             
                             const taskPoints = taskList[i].points || 0;
-                            const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期字符串 YYYY-MM-DD
                             
                             // 如果任务从未完成变为已完成，获得积分并增加贡献
                             if (!wasCompleted && newCompleted) {
                                 pointsChange += taskPoints;
                                 showPointsNotification(`+${taskPoints} 积分`);
                                 
-                                // 增加当日贡献计数
-                                contributionData[todayDate] = (contributionData[todayDate] || 0) + 1;
+                                // 记录任务完成日期
+                                const completionDate = getCurrentDateString();
+                                taskList[i].completedAt = completionDate;
+                                
+                                // 增加完成日期对应的贡献计数
+                                contributionData[completionDate] = (contributionData[completionDate] || 0) + 1;
                                 saveContributionData();
                             }
                             // 如果任务从已完成变为未完成，扣除积分并减少贡献
@@ -995,11 +1003,15 @@
                                 pointsChange -= taskPoints;
                                 showPointsNotification(`-${taskPoints} 积分`);
                                 
-                                // 减少当日贡献计数（确保不会变为负数）
-                                if (contributionData[todayDate] > 0) {
-                                    contributionData[todayDate] = (contributionData[todayDate] || 1) - 1;
+                                // 使用任务完成日期来修改贡献
+                                const completionDate = taskList[i].completedAt;
+                                if (completionDate && contributionData[completionDate] > 0) {
+                                    contributionData[completionDate] = (contributionData[completionDate] || 1) - 1;
                                     saveContributionData();
                                 }
+                                
+                                // 移除完成日期
+                                delete taskList[i].completedAt;
                             }
                             
                             // 如果有子任务，同步子任务状态
@@ -1026,7 +1038,7 @@
                         child.completed = completed;
                         
                         const childPoints = child.points || 0;
-                        const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期字符串 YYYY-MM-DD
+                        const todayDate = getCurrentDateString(); // 获取今天的日期字符串 YYYY-MM-DD
                         
                         // 如果父任务从未完成变为已完成，且子任务也从未完成变为已完成，获得积分并增加贡献
                         if (!parentWasCompleted && completed && !wasCompleted) {
@@ -1071,7 +1083,7 @@
                     task.completed = allCompleted;
                     
                     const taskPoints = task.points || 0;
-                    const todayDate = new Date().toISOString().split('T')[0]; // 获取今天的日期字符串 YYYY-MM-DD
+                    const todayDate = getCurrentDateString(); // 获取今天的日期字符串 YYYY-MM-DD
                     
                     // 如果父任务因所有子任务完成而变为完成状态，获得积分并增加贡献
                     if (!wasCompleted && allCompleted) {
@@ -1801,7 +1813,7 @@
                         
                         // 计算相对于1月1日的偏移天数
                         const daysFromFirstDay = dayIndex - firstDayOfWeek;
-                        console.log(daysFromFirstDay);
+                        // console.log(daysFromFirstDay);
                         // 如果是1月1日之前的日期，显示空格子
                         if (daysFromFirstDay < 0) {
                             const emptyGridItem = document.createElement('div');
@@ -1813,7 +1825,7 @@
                         // 创建当前日期
                         const currentDate = new Date(startDate);
                         currentDate.setDate(1 + daysFromFirstDay);
-                        console.log(currentDate);
+                        // console.log(currentDate);
                         
                         // 如果超出当前年份，显示空格子
                         if (currentDate.getFullYear() > year) {
@@ -1828,8 +1840,8 @@
                         const dateday = String(currentDate.getDate()).padStart(2, '0');
 
                         const dateString = `${dateyear}-${datemonth}-${dateday}`;
-                        console.log(currentDate);
-                        console.log(dateString);
+                        // console.log(currentDate);
+                        // console.log(dateString);
                         const contributionCount = contributionData[dateString] || 0;
                         
                         // 根据贡献数量设置背景颜色
