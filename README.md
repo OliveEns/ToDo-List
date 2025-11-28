@@ -15,9 +15,8 @@
 
 ## 界面预览
 
-<div style="position: relative; width: 100%; height: 500px; overflow: hidden;">
-<iframe style="position: absolute; width: 1200px; height: 800px; transform: scale(0.6); transform-origin: top left; border: 1px solid #ddd;" src="https://oliveens.github.io/ToDoList" frameborder="1" scrolling="yes" sandbox="allow-scripts allow-same-origin"></iframe>
-</div>
+![待办事项清单界面](ToDo.png)
+
 
 ## 使用方法
 
